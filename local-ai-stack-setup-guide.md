@@ -1,426 +1,436 @@
-# Installationsanleitung – Lokale KI-Umgebung
+# 🧠 Lokale KI-Plattform
 
-Installationsanleitung
+![Debian](https://img.shields.io/badge/Debian-Server-red)
+![Docker](https://img.shields.io/badge/Docker-Container-blue)
+![Ollama](https://img.shields.io/badge/Ollama-LLM-green)
+![Open WebUI](https://img.shields.io/badge/Open%20WebUI-Interface-orange)
+![Whisper](https://img.shields.io/badge/Whisper-Speech%20to%20Text-purple)
 
-Lokale KI-Umgebung mit Debian, Docker, Ollama, Open WebUI und Whisper
+Lokale KI-Umgebung für:
 
-Ziel
+* 💬 **LLM Chat**
+* 📄 **PDF Analyse**
+* 🎤 **Speech-to-Text**
+* 🔒 **100 % lokal – keine Cloud**
 
-zu-Text mit Whisper – vollständig auf dem eigenen 
+Die Plattform basiert auf:
 
-Lokale KI-Plattform für PDF-Analyse, Chat und Sprach-
+* **Debian**
+* **Docker**
+* **Ollama**
+* **Open WebUI**
+* **Whisper**
+* **Python Tools**
 
-Server.
+---
 
-1. Debian vorbereiten
-System aktualisieren:
+# 📑 Inhaltsverzeichnis
 
+* [Architektur](#-architektur)
+* [Voraussetzungen](#-voraussetzungen)
+* [Installation](#-installation)
+* [Ollama konfigurieren](#-ollama-konfigurieren)
+* [Modelle installieren](#-modelle-installieren)
+* [Open WebUI installieren](#-open-webui-installieren)
+* [Whisper Speech-to-Text](#-whisper-speech-to-text)
+* [Optionaler Whisper ASR Server](#-optionaler-whisper-asr-server)
+* [Python PDF Tools](#-python-pdf-tools)
+* [PDF Analyse Script](#-pdf-analyse-script)
+* [Test der Umgebung](#-test-der-umgebung)
+* [Use Cases](#-use-cases)
+
+---
+
+# 🏗 Architektur
+
+```
+Debian Server
+│
+├── Docker
+│   ├── Open WebUI (Port 3000)
+│   └── Whisper ASR Server (optional, Port 9000)
+│
+├── Ollama (Port 11434)
+│   └── LLM Modelle (z.B. llama3)
+│
+└── Python Tools
+    └── PDF → Text → Ollama Analyse
+```
+
+---
+
+# ⚙ Voraussetzungen
+
+Server:
+
+* Debian 11 / 12
+* mindestens **8 GB RAM** (empfohlen 16 GB)
+* mindestens **20 GB Speicher**
+* Internetzugang für Modell-Downloads
+
+Tools:
+
+* Docker
+* Python 3
+* Curl
+
+---
+
+# 🚀 Installation
+
+## System aktualisieren
+
+```bash
 sudo apt update
-
 sudo apt upgrade -y
+```
 
-2. Docker installieren
-Falls Docker noch nicht installiert ist, zuerst die Paketquellen und Abhängigkeiten einrichten:
+---
 
+# 🐳 Docker installieren
+
+## Abhängigkeiten
+
+```bash
 sudo apt install -y ca-certificates curl
+```
 
+## Repository hinzufügen
+
+```bash
 sudo install -m 0755 -d /etc/apt/keyrings
-
 sudo curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
-
 sudo chmod a+r /etc/apt/keyrings/docker.asc
+```
 
+```bash
 echo \
-
-"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] 
-
+"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] \
 https://download.docker.com/linux/debian \
-
 $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-
 sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+```
 
+## Docker installieren
+
+```bash
 sudo apt update
-
 sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+```
 
-Docker aktivieren und den Benutzer zur Docker-Gruppe hinzufügen:
+## Docker starten
 
+```bash
 sudo systemctl enable docker
-
 sudo systemctl start docker
+```
 
+## Benutzer hinzufügen
+
+```bash
 sudo usermod -aG docker $USER
-
 newgrp docker
+```
 
+Test:
+
+```bash
 docker ps
+```
 
-3. Ollama installieren
-Ollama ist die lokale KI-Engine für eure Sprachmodelle:
+---
 
-curl -fsSL https://ollama.com/install.sh | sh
+# 🤖 Ollama installieren
 
+Ollama stellt die **lokalen Sprachmodelle** bereit.
+
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+```
+
+Status prüfen:
+
+```bash
 systemctl status ollama
+```
 
+Version prüfen:
+
+```bash
 ollama -v
+```
 
-4. Ollama im Netzwerk erreichbar machen
-Damit Open WebUI im Docker-Container auf Ollama zugreifen kann, muss Ollama auf allen 
+---
 
-Interfaces lauschen:
+# 🌐 Ollama im Netzwerk erreichbar machen
 
+Open WebUI läuft im Docker-Container und muss auf Ollama zugreifen können.
+
+```bash
 sudo mkdir -p /etc/systemd/system/ollama.service.d
+```
 
+```bash
 cat <<'EOF' | sudo tee /etc/systemd/system/ollama.service.d/override.conf
-
 [Service]
-
 Environment="OLLAMA_HOST=0.0.0.0:11434"
-
 EOF
+```
 
+Service neu starten:
+
+```bash
 sudo systemctl daemon-reload
-
 sudo systemctl restart ollama
+```
 
+Port prüfen:
+
+```bash
 ss -tulpn | grep 11434
+```
 
-curl http://127.0.0.1:11434/api/tags
+---
 
-Erwartung: In der Ausgabe sollte später „*:11434“ oder „0.0.0.0:11434“ sichtbar sein.
+# 📦 Modelle installieren
 
-5. Modell in Ollama laden
+Beispiel: **Llama 3**
 
+```bash
 ollama pull llama3
+```
 
+Modelle anzeigen:
+
+```bash
 ollama list
+```
 
-Ein erster Funktionstest ist direkt im Terminal möglich:
+Test:
 
+```bash
 ollama run llama3
+```
 
-6. Open WebUI installieren
-Open WebUI ist die Weboberfläche für den lokalen KI-Server:
+---
 
+# 🌐 Open WebUI installieren
+
+Weboberfläche für die lokale KI.
+
+```bash
 docker run -d \
-
   --name open-webui \
-
   -p 3000:8080 \
-
   -v open-webui:/app/backend/data \
-
   --restart always \
-
   ghcr.io/open-webui/open-webui:main
+```
 
+Container prüfen:
+
+```bash
 docker ps
+```
 
-Die Oberfläche ist danach erreichbar unter:
+Zugriff:
 
+```
 http://SERVER-IP:3000
+```
 
-Beim ersten Öffnen wird der erste Benutzer als Admin angelegt.
+Beim ersten Start wird automatisch ein **Admin Benutzer** erstellt.
 
-7. Open WebUI mit Ollama verbinden
-In Open WebUI die Verbindung zu Ollama einrichten:
+---
 
-• Admin Panel 
+# 🔗 Open WebUI mit Ollama verbinden
 
-→
+In der WebUI:
 
- Einstellungen 
+```
+Admin Panel
+→ Settings
+→ Connections
+```
 
-→
+Ollama URL:
 
- Verbindungen
+```
+http://SERVER-IP:11434
+```
 
-• Ollama-URL auf die Server-IP mit Port 11434 setzen, z. B.:
+Dann:
 
-http://192.168.x.x:11434
+```
+Save
+Refresh Models
+```
 
-oder
+---
 
-http://100.x.x.x:11434
+# 🎤 Whisper Speech-to-Text
 
-Danach „Save“ und „Refresh Models“ ausführen. Anschließend sollte z. B. „llama3:latest“ im 
+Open WebUI besitzt integriertes **Speech-to-Text**.
 
-Webinterface auswählbar sein.
+Einstellungen:
 
-8. Whisper direkt in Open WebUI verwenden
-Open WebUI bringt eigene Speech-to-Text-Funktionen mit. Für den Testbetrieb genügt die lokale 
+```
+Admin Panel
+→ Settings
+→ Audio
+```
 
-Whisper-Konfiguration innerhalb von Open WebUI:
+Konfiguration:
 
-• Admin Panel 
+```
+Speech-to-Text Engine: Whisper
+STT Model: base
+Language: de
+```
 
-→
+---
 
- Settings 
+# 🎧 Optionaler Whisper ASR Server
 
-→
+Separater Transkriptionsserver.
 
- Audio
-
-• Speech-to-Text Engine: Whisper
-
-• STT Model: base
-
-• Sprache: de
-
-Damit werden gesprochene Eingaben lokal über Whisper transkribiert.
-
-Hinweis zum Mikrofonzugriff
-Wenn Open WebUI über eine unsichere HTTP-IP geöffnet wird, blockieren Browser den 
-
-Mikrofonzugriff oft. Für einen sauberen Test empfiehlt sich deshalb ein SSH-Tunnel vom eigenen 
-
-Rechner:
-
-ssh -L 3000:localhost:3000 paul@SERVER-IP
-
-Danach im Browser lokal öffnen:
-
-http://localhost:3000
-
-9. Optional: separater Whisper-ASR-Webservice
-Falls zusätzlich ein eigener Whisper-Dienst benötigt wird, kann ein separater ASR-Webservice 
-
-gestartet werden. Dieser Schritt ist optional und nicht erforderlich, wenn Whisper direkt in Open 
-
-WebUI verwendet wird.
-
+```bash
 docker run -d \
-
   --name whisper \
-
   -p 9000:9000 \
-
   -e ASR_MODEL=base \
-
   -e ASR_ENGINE=openai_whisper \
-
   -v whisper-cache:/root/.cache \
-
-  --restart always \
-
+  --restart always \
   onerahmet/openai-whisper-asr-webservice:latest
+```
 
-docker ps
+API erreichbar unter:
 
-docker logs -f whisper
-
-Die API ist danach erreichbar unter:
-
+```
 http://SERVER-IP:9000
+```
 
-Beispiel für einen Transkriptionsaufruf:
+Beispiel:
 
+```bash
 curl -X POST "http://localhost:9000/asr?task=transcribe&language=de" \
+-F "audio_file=@test.mp3"
+```
 
-  -F "audio_file=@test.mp3"
+---
 
-10. Python-Umgebung für PDF-Tools
-Für PDF-Analyse und Text-Extraktion wird eine eigene Python-Umgebung verwendet:
+# 🐍 Python PDF Tools
 
+Pakete installieren:
+
+```bash
 sudo apt install -y python3 python3-pip python3-venv poppler-utils
+```
 
+Arbeitsverzeichnis:
+
+```bash
 mkdir -p ~/pdf-tools
-
 cd ~/pdf-tools
+```
 
+Virtuelle Umgebung:
+
+```bash
 python3 -m venv .venv
-
 source .venv/bin/activate
+```
 
+Pakete installieren:
+
+```bash
 pip install pymupdf pdfplumber requests
+```
 
-Funktionstest:
+Test:
 
+```bash
 python -c "import fitz, pdfplumber, requests; print('OK')"
+```
 
-11. PDF-Analyse-Script mit Ollama
-Im Verzeichnis ~/pdf-tools kann ein kleines Script angelegt werden, das Text aus einem PDF 
+---
 
-extrahiert und an Ollama zur Zusammenfassung sendet:
+# 📄 PDF Analyse Script
 
+Script erstellen:
+
+```
 nano ~/pdf-tools/pdf_analyse.py
+```
 
-Beispielinhalt für das Script:
+Das Script:
 
-import sys
+* extrahiert Text aus PDF
+* sendet Text an **Ollama**
+* erstellt eine strukturierte Zusammenfassung
 
-import fitz
+Start:
 
-import requests
+```bash
+python pdf_analyse.py dokument.pdf
+```
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
+---
 
-MODEL = "llama3:latest"
+# 🧪 Test der Umgebung
 
-def extract_text(pdf_path: str) -> str:
+Teste folgende Funktionen:
 
-    doc = fitz.open(pdf_path)
+### Chat mit LLM
 
-    parts = []
+```
+Open WebUI → Chat → llama3
+```
 
-    for page in doc:
+### PDF Analyse
 
-        parts.append(page.get_text())
+PDF hochladen und prompt eingeben:
 
-    doc.close()
-
-    return "\n".join(parts).strip()
-
-def summarize_text(text: str) -> str:
-
-    prompt = f"""
-
-Analysiere das folgende Dokument und gib strukturiert aus:
-
-1. Kernaussagen
-
-2. Wichtige Beobachtungen
-
-3. Relevante Punkte für einen Bericht
-
-4. Kurze sachliche Zusammenfassung
-
-Dokument:
-
-{text}
-
-"""
-
-    response = requests.post(
-
-        OLLAMA_URL,
-
-        json={
-
-            "model": MODEL,
-
-            "prompt": prompt,
-
-            "stream": False,
-
-        },
-
-        timeout=600,
-
-    )
-
-    response.raise_for_status()
-
-    return response.json()["response"]
-
-def main() -> None:
-
-    if len(sys.argv) != 2:
-
-        print("Usage: python pdf_analyse.py <pdf_datei>")
-
-        sys.exit(1)
-
-    pdf_path = sys.argv[1]
-
-    text = extract_text(pdf_path)
-
-    if not text:
-
-        print("Kein Text extrahiert. Dieses PDF enthält wahrscheinlich nur Bilder.")
-
-        sys.exit(2)
-
-    result = summarize_text(text)
-
-    print(result)
-
-if __name__ == "__main__":
-
-    main()
-
-Testlauf:
-
-cd ~/pdf-tools
-
-source .venv/bin/activate
-
-python pdf_analyse.py test.pdf
-
-12. PDFs direkt in Open WebUI testen
-Maschinenlesbare PDFs können direkt in Open WebUI hochgeladen und analysiert werden. 
-
-Beispielprompt:
-
+```
 Analysiere dieses Dokument und gib strukturiert aus:
 
 1. Kernaussagen
+2. Beobachtungen
+3. Wichtige Punkte
+4. Zusammenfassung
+```
 
-2. relevante Beobachtungen
+### Speech-to-Text
 
-3. wichtige Punkte für einen Bericht
+* Mikrofon aktivieren
+* Spracheingabe testen
 
-4. kurze Zusammenfassung
+---
 
-13. Ergebnis: aktueller Zielzustand
-Nach dieser Installation steht lokal auf dem Server folgende Umgebung zur Verfügung:
+# 💡 Use Cases
 
-Debian
+Diese Umgebung ermöglicht:
 
-├─
+* lokale **KI-Chats**
+* **PDF Analyse**
+* **Sprachtranskription**
+* **Audio-Analyse**
+* **Dokumentzusammenfassungen**
+* **vollständig private KI Nutzung**
 
- Docker
+---
 
-│ ├─
+# 🔒 Datenschutz
 
- Open WebUI (Port 3000)
+Alle Komponenten laufen **lokal auf dem eigenen Server**.
 
-│ └─
+Es werden **keine Daten an externe Cloud-Dienste übertragen**.
 
- optional Whisper ASR Webservice (Port 9000)
+---
 
-├─
+# 📌 Hinweis
 
- Ollama (Port 11434)
+Diese Anleitung beschreibt den aktuellen **Teststand der Plattform**.
 
-│ └─
-
- llama3
-
-└─
-
- Python PDF Tools
-
-└─
-
- PDF 
-
-→
-
- Text 
-
-→
-
- Ollama Analyse
-
-Damit lassen sich bereits folgende Anwendungsfälle testen:
-
-• lokaler Chat mit Llama 3
-
-• PDF-Upload und Analyse in Open WebUI
-
-• lokale Speech-to-Text-Funktion mit Whisper
-
-• optional separater Whisper-ASR-Dienst für Audiodateien
-
-• PDF-Textanalyse per Python-Script mit Ollama
-
-Hinweis: Diese Anleitung bildet den aktuellen Teststand ab und lässt Tesseract/OCR bewusst außen vor.
-
-  
-  
-  
-   
-
+OCR (Tesseract) ist **bewusst noch nicht integriert**.
